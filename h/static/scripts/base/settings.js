@@ -16,7 +16,7 @@ export function settings(document, settingsClass) {
   }
   const settingsElements = document.querySelectorAll('script.' + settingsClass);
 
-  const config = {};
+  const config = {"version":"0.0.0"};
   for (let i = 0; i < settingsElements.length; i++) {
     Object.assign(config, JSON.parse(settingsElements[i].textContent));
   }
