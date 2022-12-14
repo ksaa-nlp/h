@@ -188,7 +188,7 @@ def create_annotation(request, data):
                 for div in tag:
                     ID = div.get('id')
                     if ID is not None:
-                    ids.append(ID)
+                        ids.append(ID)
 
                 for index, con in enumerate(content_str):
                     pattern = re.compile('[\u0600-\u06FF]+')
