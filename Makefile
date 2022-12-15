@@ -179,11 +179,11 @@ run-docker:
 	@docker run \
 		--rm \
 		--net h_default \
-		-e "APP_URL=http://localhost:5000" \
+		-e "APP_URL=http://10.10.10.94:5000" \
 		-e "AUTHORITY=localhost" \
 		-e "BROKER_URL=amqp://guest:guest@rabbit:5672//" \
 		-e "CLIENT_OAUTH_ID" \
-		-e "CLIENT_URL=http://localhost:3001/hypothesis" \
+		-e "CLIENT_URL=http://10.10.10.94:4001/hypothesis" \
 		-e "DATABASE_URL=postgresql://postgres@postgres/postgres" \
 		-e "ELASTICSEARCH_URL=http://elasticsearch:9200" \
 		-e "NEW_RELIC_APP_NAME=h (dev)" \

@@ -117,6 +117,10 @@ class Annotation(Base):
         nullable=False,
     )
 
+    alsharekh_id = sa.Column("alsharekh_id", sa.UnicodeText)
+    alsharekh_type = sa.Column("alsharekh_type", sa.UnicodeText)
+    original_word = sa.Column("original_word", sa.UnicodeText)
+
     #: Has the annotation been deleted?
     deleted = sa.Column(
         sa.Boolean,

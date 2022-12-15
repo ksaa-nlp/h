@@ -26,9 +26,23 @@ from h.security import Permission
 from h.traversal.group import GroupContext
 from h.util.group_scope import url_in_scope
 from h.util.uri import normalize as normalize_uri
+from urllib.request import Request, urlopen
+import subprocess
+import sys
+import json
+import ast
+import re
+
+def install_bs4():
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "bs4"])
+
+try:
+    from bs4 import BeautifulSoup 
+except:
+    install_bs4()
+    from bs4 import BeautifulSoup
 
 _ = i18n.TranslationStringFactory(__package__)
-
 
 def fetch_annotation(session, id_):
     """
@@ -94,6 +108,9 @@ def create_annotation(request, data):
 
     :returns: the created and flushed annotation
     """
+
+
+  
     document_data = data.pop("document", {})
 
     # Replies must have the same group as their parent.
@@ -112,6 +129,12 @@ def create_annotation(request, data):
     # the group, even though we've not added this to the session yet
     annotation = models.Annotation(**data)
     request.db.enable_relationship_loading(annotation)
+    
+
+    target = ast.literal_eval(json.dumps(annotation.target_selectors))
+
+    
+
 
     group = annotation.group
     if not group:
@@ -137,6 +160,62 @@ def create_annotation(request, data):
         created=annotation.created,
         updated=annotation.updated,
     )
+
+    try:
+        # to get the html elements
+        req = Request(
+        url= annotation.target_uri, 
+        headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        html = urlopen(req).read()
+        soup = BeautifulSoup(html)
+        Search_type =""
+        # check if word or examples
+        for words in ['word.arabic', '.examples']:
+            if re.search(r'\b' + words + r'\b', target[0]['fullCssSelector']):
+                Search_type = format(words)
+
+        if Search_type == 'word.arabic':
+            tag = soup.findAll("div", class_="word arabic", id=True)
+            if tag is not None:
+                soup = BeautifulSoup(str(tag))
+                content = soup.findAll("h4")
+                content_str = []
+                for cstr in content:
+                    content_str.append(cstr.text.strip())
+
+                ids = []
+                for div in tag:
+                    ID = div.get('id')
+                    if ID is not None:
+                        ids.append(ID)
+
+                for index, con in enumerate(content_str):
+                    pattern = re.compile('[\u0600-\u06FF]+')
+                    temp_con = re.findall(pattern, con)[0]
+                    temp_target = re.findall(pattern, target[2]['exact'])[0]
+                    if temp_con == temp_target:
+                        annotation.alsharekh_id = ids[index]
+                        alsharekh_type = "word"
+                        annotation.original_word = temp_con
+                    else:
+                        print("not matched")
+
+        elif  Search_type == '.examples':
+            tag = soup.find("div", class_="jsx-1407849761 examples").find("span").next_sibling.get_text()
+            pattern = re.compile('[\u0600-\u06FF]+')
+            temp_con = re.findall(pattern, tag)
+            temp_target = re.findall(pattern, target[2]['exact'])
+            if temp_con == temp_target:
+                txt_m = re.match("[\s\S]*?(?=.clearfix)", target[0]['fullCssSelector']).group()
+                annotation.alsharekh_id = txt_m[-5:]
+                alsharekh_type = "example"
+                annotation.original_word = temp_con
+            else:
+                print("not matched")
+    except:
+        txt_m = re.match("[\s\S]*?(?=.clearfix)", target[0]['fullCssSelector']).group()
+        annotation.alsharekh_id = txt_m[-5:]
 
     request.db.add(annotation)
     request.db.flush()
