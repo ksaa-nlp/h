@@ -5,8 +5,8 @@ ENV NODE_ENV production
 
 # Install dependencies.
 WORKDIR /tmp/frontend-build
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+COPY package.json  ./
+RUN yarn install 
 
 # Build h js/css.
 COPY .babelrc gulpfile.mjs rollup.config.mjs ./
@@ -66,3 +66,4 @@ ENV PYTHONPATH /var/lib/hypothesis:$PYTHONPATH
 # Start the web server by default
 USER hypothesis
 CMD ["init-env", "supervisord", "-c" , "conf/supervisord.conf"]
+
