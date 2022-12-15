@@ -19,12 +19,15 @@ FIXTURE_DATA = {
 }
 
 
-@pytest.mark.usefixtures("fetch_annotation", "subscription", "user_service")
 class TestGetNotification:
     def test_returns_correct_params_when_subscribed(
-        self, parent, pyramid_request, reply, user_service
+        self, parent, pyramid_request, reply, user_service, subscription_service
     ):
         result = get_notification(pyramid_request, reply, "create")
+
+        subscription_service.get_subscription.assert_called_once_with(
+            user_id=parent.userid, type_=Subscriptions.Type.REPLY
+        )
 
         assert isinstance(result, Notification)
         assert result.reply == reply
@@ -41,18 +44,14 @@ class TestGetNotification:
     def test_returns_none_when_annotation_is_not_reply(self, pyramid_request, reply):
         reply.references = None
 
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
+        assert get_notification(pyramid_request, reply, "create") is None
 
     def test_returns_none_when_parent_does_not_exist(
         self, annotations, parent, pyramid_request, reply
     ):
         del annotations[parent.id]
 
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
+        assert get_notification(pyramid_request, reply, "create") is None
 
     def test_returns_none_when_parent_user_does_not_exist(
         self, factories, pyramid_request, reply, user_service
@@ -60,9 +59,7 @@ class TestGetNotification:
         users = {"acct:elephant@safari.net": factories.User()}
         user_service.fetch.side_effect = users.get
 
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
+        assert get_notification(pyramid_request, reply, "create") is None
 
     def test_returns_none_when_parent_user_has_no_email_address(
         self, factories, pyramid_request, reply, user_service
@@ -88,53 +85,30 @@ class TestGetNotification:
         users = {"acct:giraffe@safari.net": factories.User()}
         user_service.fetch.side_effect = users.get
 
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
+        assert get_notification(pyramid_request, reply, "create") is None
 
     def test_returns_none_when_reply_by_same_user(self, parent, pyramid_request, reply):
         parent.userid = "acct:elephant@safari.net"
 
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
+        assert get_notification(pyramid_request, reply, "create") is None
 
     def test_returns_none_when_parent_user_cannot_read_reply(
         self, pyramid_request, reply
     ):
         reply.shared = False
 
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
+        assert get_notification(pyramid_request, reply, "create") is None
 
     def test_returns_none_when_subscription_inactive(
-        self, pyramid_request, reply, subscription
+        self, pyramid_request, reply, subscription_service
     ):
-        subscription.active = False
+        subscription_service.get_subscription.return_value.active = False
 
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
-
-    def test_returns_none_when_subscription_absent(
-        self, db_session, pyramid_request, reply
-    ):
-        db_session.query(Subscriptions).delete()
-
-        result = get_notification(pyramid_request, reply, "create")
-
-        assert result is None
+        assert get_notification(pyramid_request, reply, "create") is None
 
     @pytest.fixture
     def annotations(self):
         return {}
-
-    @pytest.fixture
-    def fetch_annotation(self, patch, annotations):
-        fetch_annotation = patch("h.notification.reply.storage.fetch_annotation")
-        fetch_annotation.side_effect = lambda _, id: annotations.get(id)
-        return fetch_annotation
 
     @pytest.fixture
     def parent(self, annotations):
@@ -164,14 +138,20 @@ class TestGetNotification:
         annotations[reply.id] = reply
         return reply
 
-    @pytest.fixture
-    def subscription(self, db_session):
-        sub = Subscriptions(type="reply", active=True, uri="acct:giraffe@safari.net")
-        db_session.add(sub)
-        db_session.flush()
-        return sub
+    @pytest.fixture(autouse=True)
+    def fetch_annotation(self, patch, annotations):
+        fetch_annotation = patch("h.notification.reply.storage.fetch_annotation")
+        fetch_annotation.side_effect = lambda _, id: annotations.get(id)
+        return fetch_annotation
 
-    @pytest.fixture
+    @pytest.fixture(autouse=True)
+    def subscription_service(self, subscription_service, factories):
+        subscription_service.get_subscription.return_value = factories.Subscriptions(
+            active=True, type=Subscriptions.Type.REPLY.value
+        )
+        return subscription_service
+
+    @pytest.fixture(autouse=True)
     def user_service(self, user_service, factories):
         users = {
             "acct:giraffe@safari.net": factories.User(),

@@ -1,11 +1,13 @@
 import logging
-from functools import partial
 
+from pyramid.request import Request
 from sqlalchemy.exc import IntegrityError
 
 from h.emails import signup
-from h.models import Activation, Subscriptions, User, UserIdentity
+from h.models import Activation, User, UserIdentity
+from h.services import SubscriptionService
 from h.services.exceptions import ConflictError
+from h.services.user_password import UserPasswordService
 from h.tasks import mailer as tasks_mailer
 
 log = logging.getLogger(__name__)
@@ -14,43 +16,42 @@ log = logging.getLogger(__name__)
 class UserSignupService:
     """A service for registering users."""
 
-    def __init__(  # pylint:disable=too-many-arguments
-        self, default_authority, mailer, session, signup_email, password_service
+    def __init__(
+        self,
+        request: Request,
+        default_authority: str,
+        password_service: UserPasswordService,
+        subscription_service: SubscriptionService,
     ):
         """
         Create a new user signup service.
 
-        :param default_authority: the default authority for new users
-        :param mailer: a mailer (such as `h.tasks.mailer`)
-        :param session: the SQLAlchemy session object
-        :param signup_email: a function for generating a signup email
-        :param password_service: the user password service
+        :param request: Pyramid request object
+        :param default_authority: Default authority for new users
+        :param password_service: User password service
+        :param subscription_service: Service for creating subscriptions
         """
+        self.request = request
+        self.session = request.db
         self.default_authority = default_authority
-        self.mailer = mailer
-        self.session = session
-        self.signup_email = signup_email
         self.password_service = password_service
+        self.subscription_service = subscription_service
 
-    def signup(self, require_activation=True, **kwargs):
+    def signup(self, require_activation: bool = True, **kwargs) -> User:
         """
         Create a new user.
 
-        If *require_activation* is ``True``, the user will be flagged as
+        If `require_activation` is `True`, the user will be flagged as
         requiring activation and an activation email will be sent.
 
-        :param require_activation: The name to use.
-        :type require_activation: bool.
-
         Remaining keyword arguments are used to construct a new
-        :py:class:`h.models.User` object.
+        `h.models.User` object.
 
-            * *identities*  A list of dictionaries representing identities to
-              add to the new user. Each dictionary will be passed as keyword args
-              to `h.models.UserIdentity`.
+            * `identities` - A list of dictionaries representing identities to
+              add to the new user. Each dictionary will be passed as keyword
+              args to `h.models.UserIdentity`.
 
-        :returns: the newly-created user object.
-        :rtype: h.models.User
+        :param require_activation: The name to use.
         """
         kwargs.setdefault("authority", self.default_authority)
 
@@ -98,8 +99,10 @@ class UserSignupService:
         # FIXME: this is horrible, but is needed until the
         # notification/subscription system is made opt-out rather than opt-in
         # (at least from the perspective of the database).
-        sub = Subscriptions(uri=user.userid, type="reply", active=True)
-        self.session.add(sub)
+        for subscription in self.subscription_service.get_all_subscriptions(
+            user_id=user.userid
+        ):
+            subscription.active = True
 
         return user
 
@@ -113,18 +116,21 @@ class UserSignupService:
         self.session.flush()
 
         # Send the activation email
-        mail_params = self.signup_email(
-            user_id=user.id, email=user.email, activation_code=user.activation.code
+        mail_params = signup.generate(
+            request=self.request,
+            user_id=user.id,
+            email=user.email,
+            activation_code=user.activation.code,
         )
-        self.mailer.send.delay(*mail_params)
+        tasks_mailer.send.delay(*mail_params)
 
 
 def user_signup_service_factory(_context, request):
     """Return a UserSignupService instance for the passed context and request."""
+
     return UserSignupService(
+        request=request,
         default_authority=request.default_authority,
-        mailer=tasks_mailer,
-        session=request.db,
-        signup_email=partial(signup.generate, request),
         password_service=request.find_service(name="user_password"),
+        subscription_service=request.find_service(SubscriptionService),
     )

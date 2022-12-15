@@ -10,7 +10,7 @@ bcrypt==4.0.1
     # via paramiko
 build==0.8.0
     # via pip-tools
-certifi==2022.9.24
+certifi==2022.12.7
     # via requests
 cffi==1.15.1
     # via
@@ -38,7 +38,7 @@ importlib-metadata==4.12.0
     # via pip-sync-faster
 jsonschema==3.2.0
     # via docker-compose
-packaging==21.3
+packaging==22.0
     # via build
 paramiko==2.10.1
     # via docker
@@ -46,7 +46,7 @@ pep517==0.13.0
     # via build
 pip-sync-faster==0.0.3
     # via -r requirements/dockercompose.in
-pip-tools==6.10.0
+pip-tools==6.11.0
     # via
     #   -r requirements/dockercompose.in
     #   pip-sync-faster
@@ -54,8 +54,6 @@ pycparser==2.20
     # via cffi
 pynacl==1.4.0
     # via paramiko
-pyparsing==3.0.9
-    # via packaging
 pyrsistent==0.17.3
     # via jsonschema
 python-dotenv==0.17.1

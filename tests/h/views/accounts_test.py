@@ -5,6 +5,7 @@ import pytest
 from h_matchers import Any
 from pyramid import httpexceptions
 
+from h.models import Subscriptions
 from h.services.developer_token import developer_token_service_factory
 from h.services.user_password import UserPasswordService
 from h.views import accounts as views
@@ -18,12 +19,6 @@ class FakeForm:
 
     def render(self):
         return self.appstruct
-
-
-class FakeSubscription:
-    def __init__(self, type_, active):
-        self.type = type_
-        self.active = active
 
 
 class FakeSerializer:
@@ -688,96 +683,79 @@ class TestAccountController:
         pyramid_config.add_route("account", "/my/account")
 
 
-@pytest.mark.usefixtures("pyramid_config", "routes", "subscriptions_model")
 class TestNotificationsController:
-    def test_get_sets_subscriptions_data_in_form(
-        self, form_validating_to, pyramid_config, pyramid_request, subscriptions_model
-    ):
-        pyramid_config.testing_securitypolicy("fiona")
-        subscriptions_model.get_subscriptions_for_uri.return_value = [
-            FakeSubscription("reply", True),
-            FakeSubscription("foo", False),
-        ]
-        controller = views.NotificationsController(pyramid_request)
-        controller.form = form_validating_to({})
+    def test_get(self, controller, authenticated_user, subscription_service):
+        result = controller.get()
 
-        controller.get()
-
+        subscription_service.get_all_subscriptions.assert_called_once_with(
+            user_id=authenticated_user.userid
+        )
         controller.form.set_appstruct.assert_called_once_with(
             {"notifications": {"reply"}}
         )
-
-    def test_it_does_not_render_form_if_user_has_no_email_address(
-        self, factories, form_validating_to, pyramid_request
-    ):
-        controller = views.NotificationsController(pyramid_request)
-        controller.form = form_validating_to({})
-        pyramid_request.user = factories.User(username="cara")
-        pyramid_request.user.email = None
-
-        result = controller.get()
-
-        assert "form" not in result
-        assert result["user_has_email_address"] is None
-
-    def test_it_renders_form_if_user_has_email_address(
-        self, factories, form_validating_to, pyramid_request
-    ):
-        controller = views.NotificationsController(pyramid_request)
-        controller.form = form_validating_to({})
-        pyramid_request.user = factories.User(username="janedoe")
-
-        result = controller.get()
-
         assert "form" in result
-        assert result["user_has_email_address"] == pyramid_request.user.email
+        assert result["user_has_email_address"] == authenticated_user.email
 
-    def test_post_with_invalid_data_returns_form(
-        self, factories, invalid_form, pyramid_config, pyramid_request
+    def test_get_if_user_has_no_email_address(self, controller, authenticated_user):
+        authenticated_user.email = None
+
+        result = controller.get()
+
+        assert result == {"user_has_email_address": None}
+
+    @pytest.mark.parametrize("set_active", (True, False))
+    def test_post(
+        self,
+        controller,
+        authenticated_user,
+        form_validating_to,
+        subscription_service,
+        set_active,
     ):
-        pyramid_request.POST = {}
-        pyramid_request.user = factories.User(username="cara")
-        pyramid_request.user.email = None
-        pyramid_config.testing_securitypolicy("jerry")
-        controller = views.NotificationsController(pyramid_request)
+        subscription = subscription_service.get_all_subscriptions.return_value[0]
+        subscription.active = not set_active
+        controller.form = form_validating_to(
+            {"notifications": {"reply"} if set_active else set()}
+        )
+
+        result = controller.post()
+
+        subscription_service.get_all_subscriptions.assert_called_once_with(
+            user_id=authenticated_user.userid
+        )
+        assert subscription.active if set_active else not subscription.active
+        # This appears to be testing `h.form.handle_form_submission()`
+        assert isinstance(result, httpexceptions.HTTPFound)
+
+    def test_post_with_invalid_data(self, controller, authenticated_user, invalid_form):
+        authenticated_user.email = None
         controller.form = invalid_form()
 
         result = controller.post()
 
-        assert "form" not in result
-        assert result["user_has_email_address"] is None
+        assert result == {"user_has_email_address": None}
 
-    def test_post_with_valid_data_updates_subscriptions(
-        self, form_validating_to, pyramid_config, pyramid_request, subscriptions_model
-    ):
-        pyramid_request.POST = {}
-        pyramid_config.testing_securitypolicy("fiona")
-        subs = [FakeSubscription("reply", True), FakeSubscription("foo", False)]
-        subscriptions_model.get_subscriptions_for_uri.return_value = subs
-        controller = views.NotificationsController(pyramid_request)
-        controller.form = form_validating_to({"notifications": {"foo"}})
-
-        controller.post()
-
-        assert not subs[0].active
-        assert subs[1].active is True
-
-    def test_post_with_valid_data_redirects(
-        self, form_validating_to, pyramid_config, pyramid_request, subscriptions_model
-    ):
-        pyramid_request.POST = {}
-        pyramid_config.testing_securitypolicy("fiona")
-        subscriptions_model.get_subscriptions_for_uri.return_value = []
+    @pytest.fixture
+    def controller(self, pyramid_request, form_validating_to):
         controller = views.NotificationsController(pyramid_request)
         controller.form = form_validating_to({})
 
-        result = controller.post()
+        return controller
 
-        assert isinstance(result, httpexceptions.HTTPFound)
+    @pytest.fixture(autouse=True)
+    def authenticated_user(self, pyramid_config, pyramid_request, factories):
+        authenticated_user = factories.User(email="email@example.com")
+        pyramid_config.testing_securitypolicy(userid=authenticated_user.userid)
+        pyramid_request.user = authenticated_user
 
-    @pytest.fixture
-    def routes(self, pyramid_config):
-        pyramid_config.add_route("account_notifications", "/p/notifications")
+        return authenticated_user
+
+    @pytest.fixture(autouse=True)
+    def subscription_service(self, subscription_service, factories):
+        subscription_service.get_all_subscriptions.return_value = [
+            factories.Subscriptions(type=Subscriptions.Type.REPLY.value, active=True)
+        ]
+        return subscription_service
 
 
 @pytest.mark.usefixtures("pyramid_config")
@@ -892,11 +870,6 @@ class TestDeveloperController:
         userid = "acct:jane@example.com"
         pyramid_config.testing_securitypolicy(userid)
         return userid
-
-
-@pytest.fixture
-def subscriptions_model(patch):
-    return patch("h.models.Subscriptions")
 
 
 @pytest.fixture

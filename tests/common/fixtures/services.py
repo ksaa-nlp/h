@@ -2,10 +2,10 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from h.services import AuthCookieService
 from h.services.annotation_delete import AnnotationDeleteService
 from h.services.annotation_json import AnnotationJSONService
 from h.services.annotation_moderation import AnnotationModerationService
+from h.services.auth_cookie import AuthCookieService
 from h.services.auth_token import AuthTokenService
 from h.services.delete_group import DeleteGroupService
 from h.services.flag import FlagService
@@ -22,6 +22,12 @@ from h.services.oauth.service import OAuthProviderService
 from h.services.organization import OrganizationService
 from h.services.search_index import SearchIndexService
 from h.services.search_index._queue import Queue
+from h.services.subscription import SubscriptionService
+from h.services.user import UserService
+from h.services.user_password import UserPasswordService
+from h.services.user_signup import UserSignupService
+from h.services.user_unique import UserUniqueService
+from h.services.user_update import UserUpdateService
 
 __all__ = (
     "mock_service",
@@ -44,16 +50,14 @@ __all__ = (
     "oauth_provider_service",
     "organization_service",
     "search_index",
+    "subscription_service",
+    "user_password_service",
     "user_service",
+    "user_password_service",
     "user_signup_service",
     "user_unique_service",
     "user_update_service",
 )
-
-from h.services.user import UserService
-from h.services.user_signup import UserSignupService
-from h.services.user_unique import UserUniqueService
-from h.services.user_update import UserUpdateService
 
 
 @pytest.fixture
@@ -181,6 +185,16 @@ def search_index(mock_service):
         spec_set=False,
         _queue=create_autospec(Queue, spec_set=True, instance=True),
     )
+
+
+@pytest.fixture
+def subscription_service(mock_service):
+    return mock_service(SubscriptionService)
+
+
+@pytest.fixture
+def user_password_service(mock_service):
+    return mock_service(UserPasswordService, name="user_password")
 
 
 @pytest.fixture
