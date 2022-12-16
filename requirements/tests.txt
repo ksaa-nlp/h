@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe requirements/tests.in
 #
-alembic==1.8.1
+alembic==1.9.0
     # via -r requirements/requirements.txt
 amqp==5.0.9
     # via
@@ -379,7 +379,6 @@ pip==22.2.2
     # via pip-tools
 setuptools==63.2.0
     # via
-    #   -r requirements/requirements.txt
     #   colander
     #   gevent
     #   gunicorn
