@@ -62,7 +62,7 @@ colander==1.8.2
     # via
     #   -r requirements/requirements.txt
     #   deform
-coverage==6.5.0
+coverage==7.0.1
     # via -r requirements/tests.in
 data-tasks==0.0.2
     # via -r requirements/requirements.txt
@@ -379,7 +379,6 @@ pip==22.2.2
     # via pip-tools
 setuptools==63.2.0
     # via
-    #   -r requirements/requirements.txt
     #   colander
     #   gevent
     #   gunicorn
