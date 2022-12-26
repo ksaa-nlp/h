@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe requirements/requirements.in
 #
-alembic==1.8.1
+alembic==1.9.1
     # via -r requirements/requirements.in
 amqp==5.0.9
     # via kombu
@@ -267,17 +267,4 @@ zope-sqlalchemy==1.6
     # via -r requirements/requirements.in
 
 # The following packages are considered to be unsafe in a requirements file:
-# setuptools==63.2.0
-    # via
-    #   colander
-    #   gevent
-    #   gunicorn
-    #   jsonschema
-    #   plaster
-    #   pyramid
-    #   repoze-sendmail
-    #   supervisor
-    #   zope-deprecation
-    #   zope-event
-    #   zope-interface
-    #   zope-sqlalchemy
+# setuptools
