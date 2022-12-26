@@ -442,7 +442,7 @@ sqlparse==0.4.3
     #   -r requirements/functests.txt
     #   -r requirements/tests.txt
     #   data-tasks
-supervisor==4.2.4
+supervisor==4.2.5
     # via
     #   -r requirements/functests.txt
     #   -r requirements/tests.txt
