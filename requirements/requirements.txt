@@ -196,7 +196,7 @@ sqlparse==0.4.3
     # via
     #   -r requirements/requirements.in
     #   data-tasks
-supervisor==4.2.4
+supervisor==4.2.5
     # via -r requirements/requirements.in
 tabulate==0.9.0
     # via
@@ -267,17 +267,4 @@ zope-sqlalchemy==1.6
     # via -r requirements/requirements.in
 
 # The following packages are considered to be unsafe in a requirements file:
-# setuptools==63.2.0
-    # via
-    #   colander
-    #   gevent
-    #   gunicorn
-    #   jsonschema
-    #   plaster
-    #   pyramid
-    #   repoze-sendmail
-    #   supervisor
-    #   zope-deprecation
-    #   zope-event
-    #   zope-interface
-    #   zope-sqlalchemy
+# setuptools
