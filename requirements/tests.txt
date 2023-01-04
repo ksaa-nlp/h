@@ -269,7 +269,7 @@ six==1.15.0
     #   python-dateutil
 sortedcontainers==2.3.0
     # via hypothesis
-sqlalchemy==1.4.45
+sqlalchemy==1.4.46
     # via
     #   -r requirements/requirements.txt
     #   alembic
@@ -379,7 +379,6 @@ pip==22.2.2
     # via pip-tools
 setuptools==63.2.0
     # via
-    #   -r requirements/requirements.txt
     #   colander
     #   gevent
     #   gunicorn
