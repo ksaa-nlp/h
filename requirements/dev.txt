@@ -166,7 +166,7 @@ newrelic==8.5.0
     # via -r requirements/requirements.txt
 oauthlib==3.2.2
     # via -r requirements/requirements.txt
-packaging==22.0
+packaging==23.0
     # via
     #   -r requirements/requirements.txt
     #   build
@@ -402,7 +402,6 @@ pip==22.2.2
     # via pip-tools
 setuptools==63.2.0
     # via
-    #   -r requirements/requirements.txt
     #   colander
     #   gevent
     #   gunicorn
